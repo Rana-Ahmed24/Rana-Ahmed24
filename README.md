@@ -1,15 +1,13 @@
 # Hi there 👋, I’m Rana Ahmed
 
-## 👩‍💻 About Me
-AI Engineer | Machine Learning | NLP | Computer Vision
+<img src="https://your-image-link-from-github.png" alt="Banner" width="300" style="float: right; margin-left: 10px;" />
 
-[![LinkedIn](https://img.shields.io/badge/-LinkedIn-0077B5?style=flat-square&logo=LinkedIn&logoColor=white)](https://linkedin.com/in/rana-ahmed-11)  
-📫 How to reach me: [ra3936299@gmail.com](mailto:ra3936299@gmail.com)
+## 👩‍💻 About Me
+AI Engineer | Machine Learning | NLP | Computer Vision  
+📫 How to reach me: [![LinkedIn](https://img.shields.io/badge/-LinkedIn-0077B5?style=flat-square&logo=LinkedIn&logoColor=white)](https://linkedin.com/in/rana-ahmed-11)  
+[ra3936299@gmail.com](mailto:ra3936299@gmail.com)
 
 ---
-
-![Banner](https://github.com/Rana-Ahmed24/Rana-Ahmed24/blob/main/ai-8802304_640.jpg)
-
 ## 🛠️ Languages and Tools:
 ![Python](https://img.shields.io/badge/-Python-333333?style=flat&logo=python)
 ![TensorFlow](https://img.shields.io/badge/-TensorFlow-333333?style=flat&logo=tensorflow)
