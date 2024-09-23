@@ -8,9 +8,8 @@
     [![LinkedIn](https://img.shields.io/badge/-LinkedIn-0077B5?style=flat-square&logo=LinkedIn&logoColor=white)](https://linkedin.com/in/rana-ahmed-11)  
     📫 How to reach me: [ra3936299@gmail.com](mailto:ra3936299@gmail.com)
   </div>
-  
   <div>
-    <img src="https://your-image-link-from-github.png](https://github.com/Rana-Ahmed24/Rana-Ahmed24/blob/main/ai-8802304_640.jpg" alt="Banner" width="300" style="margin-left: 20px;" />
+    <img src="https://github.com/Rana-Ahmed24/Rana-Ahmed24/blob/main/ai-8802304_640.jpg" alt="Banner" width="300" style="margin-left: 20px;" />
   </div>
 </div>
 
