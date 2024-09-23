@@ -9,6 +9,8 @@ Cairo, Egypt
 
 ---
 
+![Banner](https://ai-8802304_640.jpg)
+
 ## 🛠️ Languages and Tools:
 ![Python](https://img.shields.io/badge/-Python-333333?style=flat&logo=python)
 ![TensorFlow](https://img.shields.io/badge/-TensorFlow-333333?style=flat&logo=tensorflow)
