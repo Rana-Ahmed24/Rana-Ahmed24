@@ -9,7 +9,7 @@ Cairo, Egypt
 
 ---
 
-![Banner](https://ai-8802304_640.jpg)
+![Banner](https://github.com/Rana-Ahmed24/Rana-Ahmed24/blob/main/ai-8802304_640.jpg)
 
 ## 🛠️ Languages and Tools:
 ![Python](https://img.shields.io/badge/-Python-333333?style=flat&logo=python)
