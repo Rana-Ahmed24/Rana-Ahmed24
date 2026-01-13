@@ -7,7 +7,7 @@ AI Engineer | Machine Learning | NLP | Computer Vision
 
 
 [![LinkedIn](https://img.shields.io/badge/-LinkedIn-0077B5?style=flat-square&logo=LinkedIn&logoColor=white)](https://linkedin.com/in/rana-ahmed-11)  
-📫 How to reach me: [ra3936299@gmail.com](mailto:ra3936299@gmail.com)
+📫 How to reach me: [ranaamustafa24@gmail.com](mailto:ra3936299@gmail.com)
 
 ---
 
