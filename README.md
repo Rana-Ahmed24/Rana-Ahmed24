@@ -1,6 +1,3 @@
-# Hi there 👋, I’m Rana Ahmed
-
-<img src="https://github.com/Rana-Ahmed24/Rana-Ahmed24/blob/main/ai-8802304_640.jpg" alt="Banner" width="300" style="float: right; margin-left: 10px;" />
 
 ## 👩‍💻 About Me
 AI Engineer | Machine Learning | NLP | Computer Vision
