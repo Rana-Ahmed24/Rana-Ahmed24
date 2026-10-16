@@ -84,8 +84,19 @@ export function money(piastres: number, decimals = true): string {
   }).format(piastres / 100);
 }
 // Parse decimal text directly, never multiply a floating-point currency value.
+export function normalizeAmountInput(text: string): string {
+  return Array.from(text, (character) => {
+    const code = character.codePointAt(0)!;
+    if (code >= 0x0660 && code <= 0x0669) return String(code - 0x0660);
+    if (code >= 0x06f0 && code <= 0x06f9) return String(code - 0x06f0);
+    if (character === "\u066b") return ".";
+    if (character === "\u066c") return "";
+    return character;
+  }).join("");
+}
+
 export function parseAmount(text: string): number | null {
-  const value = text.trim();
+  const value = normalizeAmountInput(text).trim();
   if (!/^\d{1,7}(\.\d{1,2})?$/.test(value)) return null;
   const [whole, fraction = ""] = value.split(".");
   const amount = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
@@ -149,9 +160,7 @@ export function expensesCsv(expenses: Expense[]): string {
     [
       ["Date", "Name", "Amount (EGP)"].map(csvCell).join(","),
       ...expenses.map((e) =>
-        [e.expense_date, e.description, amountText(e.amount_piastres)]
-          .map(csvCell)
-          .join(","),
+        [e.expense_date, e.description, amountText(e.amount_piastres)].map(csvCell).join(","),
       ),
     ].join("\r\n")
   );
