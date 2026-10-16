@@ -4,7 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar } from "./calendar";
 import { EntryForm } from "./entry-form";
 import { SpendingCharts } from "./spending-charts";
-import { dayLabel, monthLabel, money, type Expense, type MonthData } from "@/lib/expenses";
+import {
+  dayLabel,
+  monthBounds,
+  monthLabel,
+  money,
+  type Expense,
+  type MonthData,
+} from "@/lib/expenses";
 
 type Mode = "home" | "view" | "entry";
 type MonthlyExpenseGroup = {
@@ -163,6 +170,19 @@ export function Tracker({
   const expenses = current?.expenses.filter((expense) => expense.expense_date === selected) ?? [];
   const monthlyGroups = allSelected ? groupMonthlyExpenses(current?.expenses ?? []) : [];
   const total = allSelected ? (current?.total ?? 0) : (current?.daily[selected] ?? 0);
+  const todayMonth = today.slice(0, 7);
+  const daysElapsed =
+    month === todayMonth
+      ? Number(today.slice(-2))
+      : month < todayMonth
+        ? Number(monthBounds(month)[1].slice(-2))
+        : 0;
+  const periodEnd = month === todayMonth ? today : monthBounds(month)[1];
+  const periodTotal = current
+    ? current.expenses
+        .filter((expense) => expense.expense_date <= periodEnd)
+        .reduce((sum, expense) => sum + expense.amount_piastres, 0)
+    : null;
 
   return (
     <>
@@ -177,6 +197,26 @@ export function Tracker({
             </button>
           </div>
         ) : null}
+        <section className="monthly-summary" aria-label="Monthly spending summary">
+          <article className="summary-card summary-total">
+            <span>{month === todayMonth ? "Total through today" : "Month total"}</span>
+            <strong>
+              {periodTotal === null ? (loading ? "Loading…" : "—") : `${money(periodTotal)} EGP`}
+            </strong>
+            <small>{monthLabel(month)}</small>
+          </article>
+          <article className="summary-card summary-average">
+            <span>Average per day</span>
+            <strong>
+              {periodTotal === null || !daysElapsed
+                ? periodTotal === null && loading
+                  ? "Loading…"
+                  : "—"
+                : `${money(periodTotal / daysElapsed)} EGP`}
+            </strong>
+            <small>{daysElapsed ? `Across ${daysElapsed} days` : "No days elapsed"}</small>
+          </article>
+        </section>
         <div className="view-layout">
           <Calendar
             month={month}

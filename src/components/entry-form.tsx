@@ -1,29 +1,58 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AlertCircle, Check, LoaderCircle } from "lucide-react";
-import {
-  CATEGORIES,
-  parseAmount,
-  validateExpense,
-  type Category,
-  type ExpenseInput,
-} from "@/lib/expenses";
+import { parseAmount, validateExpense, type ExpenseInput } from "@/lib/expenses";
 import { api } from "@/lib/client-api";
 
 export function EntryForm({ today }: { today: string }) {
   const [date, setDate] = useState(today);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<Category>("Groceries");
   const [notes, setNotes] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const descriptionId = useId();
   const listId = useId();
   const busy = useRef(false);
+  const normalizedDescription = description.trim().normalize("NFKC").toLocaleLowerCase();
+  const filteredSuggestions = suggestions.filter((name) =>
+    name.normalize("NFKC").toLocaleLowerCase().includes(normalizedDescription),
+  );
+
+  function chooseSuggestion(name: string) {
+    setDescription(name);
+    setSuggestionsOpen(false);
+    setActiveSuggestion(-1);
+  }
+
+  function handleSuggestionKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      setSuggestionsOpen(false);
+      setActiveSuggestion(-1);
+      return;
+    }
+    if (event.key === "ArrowDown" && filteredSuggestions.length) {
+      event.preventDefault();
+      setSuggestionsOpen(true);
+      setActiveSuggestion((index) => (index + 1) % filteredSuggestions.length);
+      return;
+    }
+    if (event.key === "ArrowUp" && filteredSuggestions.length) {
+      event.preventDefault();
+      setSuggestionsOpen(true);
+      setActiveSuggestion((index) => (index <= 0 ? filteredSuggestions.length - 1 : index - 1));
+      return;
+    }
+    if (event.key === "Enter" && suggestionsOpen && activeSuggestion >= 0) {
+      event.preventDefault();
+      chooseSuggestion(filteredSuggestions[activeSuggestion]);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -59,7 +88,7 @@ export function EntryForm({ today }: { today: string }) {
           expense_date: date,
           amount_piastres: parsedAmount,
           description,
-          category,
+          category: "Other",
           notes,
         },
         today,
@@ -79,7 +108,6 @@ export function EntryForm({ today }: { today: string }) {
       ]);
       setDescription("");
       setAmount("");
-      setCategory("Groceries");
       setNotes("");
       setNotice("Expense saved.");
     } catch (cause) {
@@ -105,51 +133,64 @@ export function EntryForm({ today }: { today: string }) {
             required
           />
         </label>
-        <label className="form-field" htmlFor={descriptionId}>
-          <span>Item</span>
+        <div className="form-field item-combobox">
+          <label htmlFor={descriptionId}>Item</label>
           <input
             id={descriptionId}
-            list={listId}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={suggestionsOpen && filteredSuggestions.length > 0}
+            aria-controls={listId}
+            aria-activedescendant={
+              activeSuggestion >= 0 ? `${listId}-option-${activeSuggestion}` : undefined
+            }
             placeholder="For example: meat, vegetables, potatoes"
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onFocus={() => setSuggestionsOpen(true)}
+            onChange={(event) => {
+              setDescription(event.target.value);
+              setSuggestionsOpen(true);
+              setActiveSuggestion(-1);
+            }}
+            onKeyDown={handleSuggestionKeyDown}
+            onBlur={() => {
+              setSuggestionsOpen(false);
+              setActiveSuggestion(-1);
+            }}
             maxLength={160}
             autoComplete="off"
             required
           />
-          <datalist id={listId}>
-            {suggestions.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        </label>
-        <div className="entry-row">
-          <label className="form-field" htmlFor="expense-amount">
-            <span>Price (EGP)</span>
-            <input
-              id="expense-amount"
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="0.00"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              required
-            />
-          </label>
-          <label className="form-field" htmlFor="expense-category">
-            <span>Category</span>
-            <select
-              id="expense-category"
-              value={category}
-              onChange={(event) => setCategory(event.target.value as Category)}
-            >
-              {CATEGORIES.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
+          {suggestionsOpen && filteredSuggestions.length ? (
+            <div className="item-suggestions" id={listId} role="listbox" aria-label="Saved items">
+              {filteredSuggestions.map((name, index) => (
+                <button
+                  type="button"
+                  className={`item-suggestion ${activeSuggestion === index ? "active" : ""}`}
+                  id={`${listId}-option-${index}`}
+                  key={name}
+                  role="option"
+                  aria-selected={activeSuggestion === index}
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={() => chooseSuggestion(name)}
+                >
+                  {name}
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          ) : null}
+        </div>
+        <div className="form-field">
+          <label htmlFor="expense-amount">Price (EGP)</label>
+          <input
+            id="expense-amount"
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="0.00"
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            required
+          />
         </div>
         <label className="form-field" htmlFor="expense-notes">
           <span>Notes (optional)</span>
