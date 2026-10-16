@@ -9,8 +9,9 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { AlertCircle, Check, LoaderCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Check, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 import {
+  amountText,
   dayLabel,
   monthLabel,
   money,
@@ -38,6 +39,7 @@ export function EntryForm({ today }: { today: string }) {
   const [historyError, setHistoryError] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [saving, setSaving] = useState(false);
@@ -45,6 +47,7 @@ export function EntryForm({ today }: { today: string }) {
   const [notice, setNotice] = useState("");
   const descriptionId = useId();
   const listId = useId();
+  const formRef = useRef<HTMLFormElement>(null);
   const busy = useRef(false);
   const historyRequest = useRef(0);
   const historyMonthQuery = date.slice(0, 7);
@@ -121,8 +124,34 @@ export function EntryForm({ today }: { today: string }) {
     };
   }, [historyMonthQuery, loadHistory]);
 
+  function editHistoryExpense(expense: Expense) {
+    setEditingExpense(expense);
+    setDate(expense.expense_date);
+    setDescription(expense.description);
+    setAmount(amountText(expense.amount_piastres));
+    setNotes(expense.notes);
+    setError("");
+    setNotice("");
+    setHistoryError("");
+    setPendingDeleteId(null);
+    setSuggestionsOpen(false);
+    setActiveSuggestion(-1);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelEditing() {
+    setEditingExpense(null);
+    setDate(today);
+    setDescription("");
+    setAmount("");
+    setNotes("");
+    setError("");
+    setNotice("");
+    setPendingDeleteId(null);
+  }
+
   async function removeHistoryExpense(expense: Expense) {
-    if (removingId) return;
+    if (removingId || saving) return;
     setHistoryError("");
     setRemovingId(expense.id);
     try {
@@ -133,6 +162,13 @@ export function EntryForm({ today }: { today: string }) {
       historyRequest.current += 1;
       setHistory((current) => current.filter((item) => item.id !== expense.id));
       setPendingDeleteId(null);
+      if (editingExpense?.id === expense.id) {
+        setEditingExpense(null);
+        setDate(today);
+        setDescription("");
+        setAmount("");
+        setNotes("");
+      }
       setNotice("Expense removed.");
       void api<{ items: string[] }>("/api/expenses/items")
         .then(({ items }) => setSuggestions(items))
@@ -148,7 +184,7 @@ export function EntryForm({ today }: { today: string }) {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy.current) return;
+    if (busy.current || removingId) return;
     setError("");
     setNotice("");
 
@@ -158,15 +194,16 @@ export function EntryForm({ today }: { today: string }) {
       return;
     }
 
+    const editTarget = editingExpense;
     let input: ExpenseInput;
     try {
       input = validateExpense(
         {
-          id: crypto.randomUUID(),
+          id: editTarget?.id ?? crypto.randomUUID(),
           expense_date: date,
           amount_piastres: parsedAmount,
           description,
-          category: "Other",
+          category: editTarget?.category ?? "Other",
           notes,
         },
         today,
@@ -179,30 +216,40 @@ export function EntryForm({ today }: { today: string }) {
     busy.current = true;
     setSaving(true);
     try {
-      const { expense: savedExpense } = await api<{ expense: Expense }>("/api/expenses", {
-        method: "POST",
-        body: JSON.stringify(input),
-      });
-      historyRequest.current += 1;
-      setHistory((current) =>
-        newestFirst([
-          savedExpense,
-          ...(historyMonth === historyMonthQuery
-            ? current.filter((item) => item.id !== savedExpense.id)
-            : []),
-        ]),
+      const { expense: savedExpense } = await api<{ expense: Expense }>(
+        editTarget ? `/api/expenses/${editTarget.id}` : "/api/expenses",
+        {
+          method: editTarget ? "PATCH" : "POST",
+          body: JSON.stringify(editTarget ? { ...input, version: editTarget.version } : input),
+        },
       );
-      setHistoryMonth(historyMonthQuery);
+      historyRequest.current += 1;
+      setHistory((current) => {
+        const remaining = current.filter((item) => item.id !== savedExpense.id);
+        return newestFirst(
+          savedExpense.expense_date.slice(0, 7) === historyMonthQuery
+            ? [...remaining, savedExpense]
+            : remaining,
+        );
+      });
       setHistoryError("");
       void loadHistory(historyMonthQuery);
       setSuggestions((current) => [
         savedExpense.description,
         ...current.filter((name) => name !== savedExpense.description),
       ]);
+      if (editTarget) {
+        void api<{ items: string[] }>("/api/expenses/items")
+          .then(({ items }) => setSuggestions(items))
+          .catch(() => {
+            // A refreshed suggestion list is optional after an edit.
+          });
+      }
       setDescription("");
       setAmount("");
       setNotes("");
-      setNotice("Expense saved.");
+      setEditingExpense(null);
+      setNotice(editTarget ? "Expense updated." : "Expense saved.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Couldn't save. Please try again.");
     } finally {
@@ -213,8 +260,13 @@ export function EntryForm({ today }: { today: string }) {
 
   return (
     <>
-      <form className="entry-form" onSubmit={save}>
-        <fieldset disabled={saving}>
+      <form ref={formRef} className="entry-form" onSubmit={save}>
+        {editingExpense ? (
+          <p className="form-message form-editing" role="status">
+            Editing “{editingExpense.description}”. Save changes when you’re done.
+          </p>
+        ) : null}
+        <fieldset disabled={saving || Boolean(removingId)}>
           <label className="form-field" htmlFor="expense-date">
             <span>Date</span>
             <input
@@ -311,10 +363,22 @@ export function EntryForm({ today }: { today: string }) {
             <Check size={17} /> {notice}
           </p>
         ) : null}
-        <button className="save-button" type="submit" disabled={saving}>
-          {saving ? <LoaderCircle size={17} className="spin" /> : null}
-          {saving ? "Saving…" : "Save expense"}
-        </button>
+        <div className={`form-submit-row${editingExpense ? " is-editing" : ""}`}>
+          <button className="save-button" type="submit" disabled={saving || Boolean(removingId)}>
+            {saving ? <LoaderCircle size={17} className="spin" /> : null}
+            {saving ? "Saving…" : editingExpense ? "Save changes" : "Save expense"}
+          </button>
+          {editingExpense ? (
+            <button
+              className="edit-cancel-button"
+              type="button"
+              disabled={saving || Boolean(removingId)}
+              onClick={cancelEditing}
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
       </form>
       <section className="entry-history" aria-labelledby="entry-history-title">
         <div className="entry-history-heading">
@@ -354,7 +418,7 @@ export function EntryForm({ today }: { today: string }) {
                       <button
                         className="history-cancel"
                         type="button"
-                        disabled={Boolean(removingId)}
+                        disabled={Boolean(removingId) || saving}
                         onClick={() => setPendingDeleteId(null)}
                       >
                         Cancel
@@ -362,23 +426,35 @@ export function EntryForm({ today }: { today: string }) {
                       <button
                         className="history-delete-confirm"
                         type="button"
-                        disabled={Boolean(removingId)}
+                        disabled={Boolean(removingId) || saving}
                         onClick={() => void removeHistoryExpense(expense)}
                       >
                         {removingId === expense.id ? "Removing…" : "Delete"}
                       </button>
                     </>
                   ) : (
-                    <button
-                      className="history-remove"
-                      type="button"
-                      aria-label={`Delete ${expense.description} from ${dayLabel(expense.expense_date)}`}
-                      disabled={Boolean(removingId)}
-                      onClick={() => setPendingDeleteId(expense.id)}
-                    >
-                      <Trash2 size={16} />
-                      <span>Delete</span>
-                    </button>
+                    <>
+                      <button
+                        className="history-edit"
+                        type="button"
+                        aria-label={`Edit ${expense.description} from ${dayLabel(expense.expense_date)}`}
+                        disabled={Boolean(removingId) || saving}
+                        onClick={() => editHistoryExpense(expense)}
+                      >
+                        <Pencil size={15} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        className="history-remove"
+                        type="button"
+                        aria-label={`Delete ${expense.description} from ${dayLabel(expense.expense_date)}`}
+                        disabled={Boolean(removingId) || saving}
+                        onClick={() => setPendingDeleteId(expense.id)}
+                      >
+                        <Trash2 size={16} />
+                        <span>Delete</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </article>

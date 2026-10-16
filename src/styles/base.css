@@ -659,6 +659,7 @@ textarea:focus-visible {
   gap: 6px;
 }
 
+.history-edit,
 .history-remove,
 .history-cancel,
 .history-delete-confirm {
@@ -673,6 +674,16 @@ textarea:focus-visible {
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.history-edit {
+  border-color: #dfc9b1;
+  background: #fffaf4;
+  color: #70482f;
+}
+
+.history-edit:hover:not(:disabled) {
+  background: #f2e5d7;
 }
 
 .history-remove {
@@ -770,7 +781,6 @@ textarea:focus-visible {
 .save-button {
   width: 100%;
   min-height: 46px;
-  margin-top: 16px;
   padding: 10px 14px;
   border: 0;
   border-radius: 5px;
@@ -781,6 +791,31 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+.form-submit-row {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.form-submit-row.is-editing {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.edit-cancel-button {
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.edit-cancel-button:hover:not(:disabled) {
+  background: var(--soft);
 }
 
 .save-button:hover:not(:disabled) {
@@ -802,6 +837,15 @@ textarea:focus-visible {
 
 .form-success {
   color: var(--accent);
+}
+
+.form-editing {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid #e7cba9;
+  border-radius: 5px;
+  background: #fff4e6;
+  color: #70482f;
 }
 
 .item-combobox {
