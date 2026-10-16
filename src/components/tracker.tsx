@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar } from "./calendar";
 import { EntryForm } from "./entry-form";
+import { SpendingCharts } from "./spending-charts";
 import { dayLabel, money, type MonthData } from "@/lib/expenses";
 
 type Mode = "home" | "view" | "entry";
@@ -166,6 +167,14 @@ export function Tracker({
             </div>
           </section>
         </div>
+        <SpendingCharts
+          month={month}
+          today={today}
+          selected={selected}
+          data={current}
+          loading={loading && !current}
+          onSelect={selectDay}
+        />
       </main>
     </>
   );
