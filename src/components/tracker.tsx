@@ -187,7 +187,7 @@ export function Tracker({
   return (
     <>
       <Header />
-      <main className="app-main">
+      <main className="app-main view-main">
         {localPreview ? <PreviewNote /> : null}
         {error ? (
           <div className="error-banner" role="alert">

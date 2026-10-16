@@ -1,6 +1,6 @@
 import { dayLabel, money, monthBounds, type MonthData } from "@/lib/expenses";
 
-const ITEM_COLORS = ["#5b8f65", "#5b80b5", "#d19a3f", "#c77284", "#8b70b8", "#49a6a0"];
+const ITEM_COLORS = ["#80523b", "#c8794c", "#d2a548", "#72865e", "#478f8c", "#9a6b92"];
 
 export function SpendingCharts({
   month,

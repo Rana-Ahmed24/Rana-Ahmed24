@@ -1020,3 +1020,125 @@ textarea:focus-visible {
     transition: none !important;
   }
 }
+
+/* Warm, colorful palette for the read-only spending view. */
+.view-main {
+  --view-ink: #38291f;
+  --view-muted: #78685b;
+  --view-line: #e7d7c6;
+  --view-cocoa: #764c33;
+  --view-caramel: #b97842;
+}
+
+.view-main .calendar-card,
+.view-main .day-card,
+.view-main .chart-card {
+  border-color: var(--view-line);
+  background: #fffdfa;
+  box-shadow: 0 5px 18px rgb(94 62 39 / 7%);
+}
+
+.view-main .calendar-card {
+  background: linear-gradient(145deg, #fffefa 0%, #fbf4eb 100%);
+}
+
+.view-main .day-card h2 {
+  color: var(--view-ink);
+}
+
+.view-main .calendar-navigation > button:hover:not(:disabled) {
+  border-color: #c9a98d;
+  background: #f7eee4;
+  color: var(--view-cocoa);
+}
+
+.view-main .month-summary-button.selected,
+.view-main .calendar-day.selected {
+  border-color: #a36d46;
+  background: #f2e2d2;
+  color: #65412b;
+}
+
+.view-main .calendar-day.has-spend .day-number {
+  color: var(--view-cocoa);
+}
+
+.view-main .calendar-day.has-spend .day-amount {
+  color: var(--view-caramel);
+}
+
+.view-main .calendar-day.today .day-number {
+  color: #a34f37;
+}
+
+.view-main .summary-total {
+  border-color: #e8c8a7;
+  background: linear-gradient(135deg, #fff3e4 0%, #f5dfc7 100%);
+  color: #70482f;
+}
+
+.view-main .summary-total small {
+  color: #846447;
+}
+
+.view-main .summary-average {
+  border-color: #cddfce;
+  background: linear-gradient(135deg, #f1f7ef 0%, #e2eee0 100%);
+  color: #426143;
+}
+
+.view-main .summary-average small {
+  color: #687e67;
+}
+
+.view-main .day-total {
+  border-color: var(--view-line);
+  color: var(--view-ink);
+}
+
+.view-main .day-total strong {
+  color: var(--view-cocoa);
+}
+
+.view-main .expense-row {
+  border-left-color: #805539;
+  background: #f3e5d5;
+  color: #392a20;
+  box-shadow: inset 0 0 0 1px rgb(104 68 42 / 5%);
+}
+
+.view-main .expense-row:nth-child(4n + 2) {
+  border-left-color: #aa7147;
+  background: #f8eee2;
+}
+
+.view-main .expense-row:nth-child(4n + 3) {
+  border-left-color: #bd8954;
+  background: #efe0ce;
+}
+
+.view-main .expense-row:nth-child(4n + 4) {
+  border-left-color: #72503c;
+  background: #e9d9c8;
+}
+
+.view-main .expense-description small {
+  color: var(--view-muted);
+}
+
+.view-main .chart-card {
+  background: linear-gradient(155deg, #fffdfa 0%, #fcf7f0 100%);
+}
+
+.view-main .daily-chart-track {
+  border-bottom-color: #dfcdb9;
+}
+
+.view-main .daily-chart-bar {
+  background: linear-gradient(180deg, #c89a6c 0%, #9a6847 100%);
+}
+
+.view-main .daily-chart-day:hover:not(:disabled) .daily-chart-bar,
+.view-main .daily-chart-day.selected .daily-chart-bar {
+  background: linear-gradient(180deg, #986542 0%, #68432e 100%);
+}
