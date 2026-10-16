@@ -13,15 +13,17 @@ export function Calendar({
   selected,
   daily,
   onSelect,
+  onSelectAll,
   onMonth,
   loading,
 }: {
   month: string;
   today: string;
-  selected: string;
+  selected: string | "all";
   daily: Record<string, number>;
   loading: boolean;
   onSelect: (date: string) => void;
+  onSelectAll: () => void;
   onMonth: (month: string) => void;
 }) {
   const start = new Date(`${month}-01T12:00:00Z`);
@@ -63,6 +65,18 @@ export function Calendar({
           onClick={() => onMonth(moveMonth(month, 1))}
         >
           <ChevronRight size={19} />
+        </button>
+      </div>
+      <div className="calendar-summary-choice">
+        <button
+          className={`month-summary-button ${selected === "all" ? "selected" : ""}`}
+          type="button"
+          aria-label={`View all expenses for ${monthLabel(month)}`}
+          aria-pressed={selected === "all"}
+          disabled={loading}
+          onClick={onSelectAll}
+        >
+          All month
         </button>
       </div>
       <div className="calendar-week" aria-hidden="true">

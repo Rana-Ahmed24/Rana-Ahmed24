@@ -166,6 +166,32 @@ textarea:focus-visible {
   cursor: pointer;
 }
 
+.calendar-summary-choice {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 10px;
+}
+
+.month-summary-button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.month-summary-button:hover:not(:disabled) {
+  background: var(--soft);
+}
+
+.month-summary-button.selected {
+  border-color: var(--accent);
+  background: #edf2ed;
+}
+
 .calendar-week,
 .calendar-grid {
   display: grid;
@@ -277,6 +303,18 @@ textarea:focus-visible {
 .expense-row strong {
   flex-shrink: 0;
   font-weight: 600;
+}
+
+.expense-description {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.expense-description small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .empty-day {

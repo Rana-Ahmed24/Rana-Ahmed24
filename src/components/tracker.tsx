@@ -4,9 +4,41 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar } from "./calendar";
 import { EntryForm } from "./entry-form";
 import { SpendingCharts } from "./spending-charts";
-import { dayLabel, money, type MonthData } from "@/lib/expenses";
+import { dayLabel, monthLabel, money, type Expense, type MonthData } from "@/lib/expenses";
 
 type Mode = "home" | "view" | "entry";
+type MonthlyExpenseGroup = {
+  description: string;
+  amount_piastres: number;
+  count: number;
+  dates: Set<string>;
+};
+
+function groupMonthlyExpenses(
+  expenses: Expense[],
+): Array<Omit<MonthlyExpenseGroup, "dates"> & { dates: string[] }> {
+  const groups = new Map<string, MonthlyExpenseGroup>();
+  for (const expense of expenses) {
+    const description = expense.description.trim().replace(/\s+/g, " ");
+    const key = description.normalize("NFKC").toLowerCase();
+    const group = groups.get(key) ?? {
+      description,
+      amount_piastres: 0,
+      count: 0,
+      dates: new Set<string>(),
+    };
+    group.amount_piastres += expense.amount_piastres;
+    group.count += 1;
+    group.dates.add(expense.expense_date);
+    groups.set(key, group);
+  }
+
+  return [...groups.values()]
+    .map(({ dates, ...group }) => ({ ...group, dates: [...dates].sort() }))
+    .sort(
+      (a, b) => b.amount_piastres - a.amount_piastres || a.description.localeCompare(b.description),
+    );
+}
 
 export function Tracker({
   initialToday,
@@ -22,7 +54,7 @@ export function Tracker({
   const mode = initialMode;
   const [today, setToday] = useState(initialToday);
   const [month, setMonth] = useState(initialToday.slice(0, 7));
-  const [selected, setSelected] = useState(initialToday);
+  const [selected, setSelected] = useState<string | "all">(initialToday);
   const [data, setData] = useState<MonthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,12 +102,20 @@ export function Tracker({
   function changeMonth(next: string) {
     setLoading(true);
     setMonth(next);
-    setSelected(next === today.slice(0, 7) ? today : `${next}-01`);
+    setSelected((current) =>
+      current === "all" ? "all" : next === today.slice(0, 7) ? today : `${next}-01`,
+    );
     setError("");
   }
 
   function selectDay(date: string) {
     setSelected(date);
+    if (window.innerWidth < 800)
+      selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function selectAll() {
+    setSelected("all");
     if (window.innerWidth < 800)
       selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -119,8 +159,10 @@ export function Tracker({
   }
 
   const current = data?.month === month ? data : null;
+  const allSelected = selected === "all";
   const expenses = current?.expenses.filter((expense) => expense.expense_date === selected) ?? [];
-  const total = current?.daily[selected] ?? 0;
+  const monthlyGroups = allSelected ? groupMonthlyExpenses(current?.expenses ?? []) : [];
+  const total = allSelected ? (current?.total ?? 0) : (current?.daily[selected] ?? 0);
 
   return (
     <>
@@ -143,17 +185,31 @@ export function Tracker({
             daily={current?.daily ?? {}}
             loading={loading && !current}
             onSelect={selectDay}
+            onSelectAll={selectAll}
             onMonth={changeMonth}
           />
           <section className="day-card" ref={selectedRef} aria-labelledby="day-title">
-            <h2 id="day-title">{dayLabel(selected)}</h2>
+            <h2 id="day-title">{allSelected ? `All ${monthLabel(month)}` : dayLabel(selected)}</h2>
             <div className="day-total">
-              <span>Daily total</span>
+              <span>{allSelected ? "Month total" : "Daily total"}</span>
               <strong>{current ? `${money(total)} EGP` : loading ? "Loading…" : "0.00 EGP"}</strong>
             </div>
             <div className="expense-list" aria-live="polite" aria-busy={loading && !current}>
               {!current && loading ? (
                 <p className="empty-day">Loading expenses…</p>
+              ) : allSelected && monthlyGroups.length ? (
+                monthlyGroups.map((group) => (
+                  <article className="expense-row monthly-expense-row" key={group.description}>
+                    <div className="expense-description">
+                      <span>{group.description}</span>
+                      <small>
+                        {group.count} {group.count === 1 ? "entry" : "entries"} ·{" "}
+                        {group.dates.map((date) => dayLabel(date, true)).join(", ")}
+                      </small>
+                    </div>
+                    <strong>{money(group.amount_piastres)} EGP</strong>
+                  </article>
+                ))
               ) : expenses.length ? (
                 expenses.map((expense) => (
                   <article className="expense-row" key={expense.id}>
@@ -162,7 +218,11 @@ export function Tracker({
                   </article>
                 ))
               ) : (
-                <p className="empty-day">No expenses recorded for this day.</p>
+                <p className="empty-day">
+                  {allSelected
+                    ? "No expenses recorded for this month."
+                    : "No expenses recorded for this day."}
+                </p>
               )}
             </div>
           </section>
@@ -170,7 +230,7 @@ export function Tracker({
         <SpendingCharts
           month={month}
           today={today}
-          selected={selected}
+          selected={allSelected ? "" : selected}
           data={current}
           loading={loading && !current}
           onSelect={selectDay}
