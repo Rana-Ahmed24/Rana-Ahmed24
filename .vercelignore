@@ -1,0 +1,16 @@
+.env*
+.private/
+.git/
+.next/
+node_modules/
+test-results/
+playwright-report/
+coverage/
+tests/
+scripts/
+supabase/
+README.md
+AGENTS.md
+playwright.config.ts
+vitest.config.ts
+*.tsbuildinfo
