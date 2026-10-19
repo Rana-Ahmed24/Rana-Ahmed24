@@ -19,6 +19,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { ExpenseDetailActions } from "./expense-detail-actions";
 import {
   amountText,
   dayLabel,
@@ -583,23 +584,13 @@ export function EntryForm({ today }: { today: string }) {
               <article className="history-row" key={expense.id}>
                 <div className="history-item">
                   <span>{expense.description}</span>
-                  <small>
-                    {dayLabel(expense.expense_date, true)}
-                    {expense.notes ? ` · ${expense.notes}` : ""}
-                    {expense.receipt_key ? (
-                      <>
-                        {" · "}
-                        <a
-                          className="receipt-view-link"
-                          href={`/api/expenses/${expense.id}/receipt`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          View receipt
-                        </a>
-                      </>
-                    ) : null}
-                  </small>
+                  <small>{dayLabel(expense.expense_date, true)}</small>
+                  <ExpenseDetailActions
+                    expenseId={expense.id}
+                    description={expense.description}
+                    notes={expense.notes}
+                    hasReceipt={Boolean(expense.receipt_key)}
+                  />
                 </div>
                 <strong className="history-price">{money(expense.amount_piastres)} EGP</strong>
                 <div className="history-actions">

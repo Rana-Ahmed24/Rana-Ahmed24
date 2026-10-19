@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar } from "./calendar";
 import { EntryForm } from "./entry-form";
+import { ExpenseDetailActions } from "./expense-detail-actions";
 import { SpendingCharts } from "./spending-charts";
 import {
   dayLabel,
@@ -255,16 +256,12 @@ export function Tracker({
                   <article className="expense-row" key={expense.id}>
                     <div className="expense-description">
                       <span>{expense.description}</span>
-                      {expense.receipt_key ? (
-                        <a
-                          className="receipt-view-link"
-                          href={`/api/expenses/${expense.id}/receipt`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          View receipt
-                        </a>
-                      ) : null}
+                      <ExpenseDetailActions
+                        expenseId={expense.id}
+                        description={expense.description}
+                        notes={expense.notes}
+                        hasReceipt={Boolean(expense.receipt_key)}
+                      />
                     </div>
                     <strong>{money(expense.amount_piastres)} EGP</strong>
                   </article>
