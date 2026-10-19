@@ -382,6 +382,40 @@ textarea:focus-visible {
   line-height: 1.35;
 }
 
+.monthly-summary-link {
+  color: #72513a;
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: rgb(114 81 58 / 48%);
+  text-underline-offset: 2px;
+}
+
+.monthly-summary-link:hover {
+  color: #392a20;
+  text-decoration-color: currentColor;
+}
+
+.monthly-group-name {
+  width: fit-content;
+  font-size: 15px;
+}
+
+.monthly-back-link {
+  display: inline-block;
+  width: fit-content;
+  margin: 0 0 8px;
+  color: #72513a;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.monthly-entry-date {
+  width: fit-content;
+  font-size: 12px;
+}
+
 .empty-day {
   padding: 20px 0;
   color: var(--muted);

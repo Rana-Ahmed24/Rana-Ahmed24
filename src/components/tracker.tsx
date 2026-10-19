@@ -16,11 +16,16 @@ import {
 
 type Mode = "home" | "view" | "entry";
 type MonthlyExpenseGroup = {
+  key: string;
   description: string;
   amount_piastres: number;
   count: number;
   dates: Set<string>;
 };
+
+function normalizeDescription(description: string): string {
+  return description.trim().replace(/\s+/g, " ").normalize("NFKC").toLowerCase();
+}
 
 function groupMonthlyExpenses(
   expenses: Expense[],
@@ -28,8 +33,9 @@ function groupMonthlyExpenses(
   const groups = new Map<string, MonthlyExpenseGroup>();
   for (const expense of expenses) {
     const description = expense.description.trim().replace(/\s+/g, " ");
-    const key = description.normalize("NFKC").toLowerCase();
+    const key = normalizeDescription(description);
     const group = groups.get(key) ?? {
+      key,
       description,
       amount_piastres: 0,
       count: 0,
@@ -50,19 +56,26 @@ function groupMonthlyExpenses(
 
 export function Tracker({
   initialToday,
+  initialMonth,
+  initialSelected,
+  initialItem,
   initialMode,
   localPreview,
   configured,
 }: {
   initialToday: string;
+  initialMonth: string;
+  initialSelected: string | "all";
+  initialItem: string;
   initialMode: Mode;
   localPreview: boolean;
   configured: boolean;
 }) {
   const mode = initialMode;
   const [today, setToday] = useState(initialToday);
-  const [month, setMonth] = useState(initialToday.slice(0, 7));
-  const [selected, setSelected] = useState<string | "all">(initialToday);
+  const [month, setMonth] = useState(initialMonth);
+  const [selected, setSelected] = useState<string | "all">(initialSelected);
+  const [monthlyItem, setMonthlyItem] = useState(initialItem);
   const [data, setData] = useState<MonthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -110,6 +123,7 @@ export function Tracker({
   function changeMonth(next: string) {
     setLoading(true);
     setMonth(next);
+    setMonthlyItem("");
     setSelected((current) =>
       current === "all" ? "all" : next === today.slice(0, 7) ? today : `${next}-01`,
     );
@@ -117,12 +131,14 @@ export function Tracker({
   }
 
   function selectDay(date: string) {
+    setMonthlyItem("");
     setSelected(date);
     if (window.innerWidth < 800)
       selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function selectAll() {
+    setMonthlyItem("");
     setSelected("all");
     if (window.innerWidth < 800)
       selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -170,7 +186,23 @@ export function Tracker({
   const allSelected = selected === "all";
   const expenses = current?.expenses.filter((expense) => expense.expense_date === selected) ?? [];
   const monthlyGroups = allSelected ? groupMonthlyExpenses(current?.expenses ?? []) : [];
-  const total = allSelected ? (current?.total ?? 0) : (current?.daily[selected] ?? 0);
+  const selectedMonthlyGroup = monthlyItem
+    ? monthlyGroups.find((group) => group.key === normalizeDescription(monthlyItem))
+    : undefined;
+  const monthlyItemExpenses = selectedMonthlyGroup
+    ? (current?.expenses ?? [])
+        .filter((expense) => normalizeDescription(expense.description) === selectedMonthlyGroup.key)
+        .sort(
+          (a, b) =>
+            b.expense_date.localeCompare(a.expense_date) ||
+            b.created_at.localeCompare(a.created_at),
+        )
+    : [];
+  const total = selectedMonthlyGroup
+    ? selectedMonthlyGroup.amount_piastres
+    : allSelected
+      ? (current?.total ?? 0)
+      : (current?.daily[selected] ?? 0);
   const todayMonth = today.slice(0, 7);
   const daysElapsed =
     month === todayMonth
@@ -230,25 +262,83 @@ export function Tracker({
             onMonth={changeMonth}
           />
           <section className="day-card" ref={selectedRef} aria-labelledby="day-title">
-            <h2 id="day-title">{allSelected ? `All ${monthLabel(month)}` : dayLabel(selected)}</h2>
+            {selectedMonthlyGroup ? (
+              <a className="monthly-back-link" href={`/?mode=view&month=${month}&all=1`}>
+                ← All month
+              </a>
+            ) : null}
+            <h2 id="day-title">
+              {selectedMonthlyGroup
+                ? selectedMonthlyGroup.description
+                : allSelected
+                  ? `All ${monthLabel(month)}`
+                  : dayLabel(selected)}
+            </h2>
             <div className="day-total">
-              <span>{allSelected ? "Month total" : "Daily total"}</span>
+              <span>
+                {selectedMonthlyGroup ? "Entry total" : allSelected ? "Month total" : "Daily total"}
+              </span>
               <strong>{current ? `${money(total)} EGP` : loading ? "Loading…" : "0.00 EGP"}</strong>
             </div>
             <div className="expense-list" aria-live="polite" aria-busy={loading && !current}>
               {!current && loading ? (
                 <p className="empty-day">Loading expenses…</p>
-              ) : allSelected && monthlyGroups.length ? (
+              ) : allSelected && !selectedMonthlyGroup && monthlyGroups.length ? (
                 monthlyGroups.map((group) => (
-                  <article className="expense-row monthly-expense-row" key={group.description}>
+                  <article className="expense-row monthly-expense-row" key={group.key}>
                     <div className="expense-description">
-                      <span>{group.description}</span>
+                      <a
+                        className="monthly-summary-link monthly-group-name"
+                        href={`/?mode=view&month=${month}&item=${encodeURIComponent(group.description)}`}
+                        aria-label={`View entries for ${group.description}`}
+                      >
+                        {group.description}
+                      </a>
                       <small>
-                        {group.count} {group.count === 1 ? "entry" : "entries"} ·{" "}
-                        {group.dates.map((date) => dayLabel(date, true)).join(", ")}
+                        <a
+                          className="monthly-summary-link"
+                          href={`/?mode=view&month=${month}&item=${encodeURIComponent(group.description)}`}
+                          aria-label={`View ${group.count} ${group.count === 1 ? "entry" : "entries"} for ${group.description}`}
+                        >
+                          {group.count} {group.count === 1 ? "entry" : "entries"}
+                        </a>
+                        {" · "}
+                        {group.dates.map((date, index) => (
+                          <span key={date}>
+                            {index ? ", " : ""}
+                            <a
+                              className="monthly-summary-link"
+                              href={`/?mode=view&month=${month}&date=${date}`}
+                              aria-label={`View expenses for ${dayLabel(date, true)}`}
+                            >
+                              {dayLabel(date, true)}
+                            </a>
+                          </span>
+                        ))}
                       </small>
                     </div>
                     <strong>{money(group.amount_piastres)} EGP</strong>
+                  </article>
+                ))
+              ) : selectedMonthlyGroup && monthlyItemExpenses.length ? (
+                monthlyItemExpenses.map((expense) => (
+                  <article className="expense-row" key={expense.id}>
+                    <div className="expense-description">
+                      <a
+                        className="monthly-entry-date monthly-summary-link"
+                        href={`/?mode=view&month=${month}&date=${expense.expense_date}`}
+                      >
+                        {dayLabel(expense.expense_date, true)}
+                      </a>
+                      <span>{expense.description}</span>
+                      <ExpenseDetailActions
+                        expenseId={expense.id}
+                        description={expense.description}
+                        notes={expense.notes}
+                        hasReceipt={Boolean(expense.receipt_key)}
+                      />
+                    </div>
+                    <strong>{money(expense.amount_piastres)} EGP</strong>
                   </article>
                 ))
               ) : expenses.length ? (
