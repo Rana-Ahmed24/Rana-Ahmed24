@@ -15,6 +15,7 @@ export type Expense = {
   description: string;
   category: Category;
   notes: string;
+  receipt_key?: string | null;
   created_at: string;
   updated_at: string;
   version: number;
@@ -23,6 +24,7 @@ export type ExpenseInput = Pick<
   Expense,
   "id" | "expense_date" | "amount_piastres" | "description" | "category" | "notes"
 >;
+export type ExpenseSaveInput = ExpenseInput & { receipt_key: string | null };
 export type MonthData = {
   expenses: Expense[];
   total: number;

@@ -253,7 +253,19 @@ export function Tracker({
               ) : expenses.length ? (
                 expenses.map((expense) => (
                   <article className="expense-row" key={expense.id}>
-                    <span>{expense.description}</span>
+                    <div className="expense-description">
+                      <span>{expense.description}</span>
+                      {expense.receipt_key ? (
+                        <a
+                          className="receipt-view-link"
+                          href={`/api/expenses/${expense.id}/receipt`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View receipt
+                        </a>
+                      ) : null}
+                    </div>
                     <strong>{money(expense.amount_piastres)} EGP</strong>
                   </article>
                 ))

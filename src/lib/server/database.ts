@@ -1,10 +1,10 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { type Expense, type ExpenseInput } from "../expenses";
+import { type Expense, type ExpenseInput, type ExpenseSaveInput } from "../expenses";
 import { HttpError } from "./http";
 
 const FIELDS =
-  "id,expense_date,amount_piastres,description,category,notes,created_at,updated_at,version";
+  "id,expense_date,amount_piastres,description,category,notes,receipt_key,created_at,updated_at,version";
 export function databaseConfigured(): boolean {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY);
 }
@@ -40,7 +40,7 @@ export async function listExpenseDescriptions(): Promise<string[]> {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(({ name }) => name);
 }
-export async function addExpense(input: ExpenseInput): Promise<Expense> {
+export async function addExpense(input: ExpenseSaveInput): Promise<Expense> {
   const client = db();
   const { data, error } = await client.from("expenses").insert(input).select(FIELDS).single();
   if (!error) return data as Expense;
@@ -66,7 +66,7 @@ export async function getExpense(id: string): Promise<Expense | undefined> {
   if (error) throw new Error("Database read failed");
   return data as Expense | undefined;
 }
-export async function updateExpense(input: ExpenseInput, version: number): Promise<Expense> {
+export async function updateExpense(input: ExpenseSaveInput, version: number): Promise<Expense> {
   const { id, ...changes } = input;
   const { data, error } = await db()
     .from("expenses")

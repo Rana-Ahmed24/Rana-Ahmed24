@@ -9,7 +9,16 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { AlertCircle, Check, LoaderCircle, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  Check,
+  ImagePlus,
+  LoaderCircle,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   amountText,
   dayLabel,
@@ -24,6 +33,44 @@ import {
 } from "@/lib/expenses";
 import { api } from "@/lib/client-api";
 
+const MAX_RECEIPT_BYTES = 3 * 1024 * 1024;
+
+async function prepareReceipt(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image for the receipt.");
+
+  let image: ImageBitmap;
+  try {
+    image = await createImageBitmap(file);
+  } catch {
+    throw new Error("This photo format could not be opened. Choose a JPEG, PNG, or WebP photo.");
+  }
+
+  try {
+    let longestSide = 1800;
+    let quality = 0.84;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const scale = Math.min(1, longestSide / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("This photo could not be prepared. Please choose another.");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", quality),
+      );
+      if (!blob) throw new Error("This photo could not be prepared. Please choose another.");
+      if (blob.size <= MAX_RECEIPT_BYTES)
+        return new File([blob], "receipt.jpg", { type: "image/jpeg", lastModified: Date.now() });
+      longestSide = Math.round(longestSide * 0.8);
+      quality = Math.max(0.48, quality - 0.08);
+    }
+    throw new Error("This photo is too large. Choose a smaller image.");
+  } finally {
+    image.close();
+  }
+}
+
 function newestFirst(expenses: Expense[]): Expense[] {
   return [...expenses].sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
@@ -33,6 +80,10 @@ export function EntryForm({ today }: { today: string }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [receiptRemoved, setReceiptRemoved] = useState(false);
+  const [preparingReceipt, setPreparingReceipt] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [history, setHistory] = useState<Expense[]>([]);
   const [historyMonth, setHistoryMonth] = useState("");
@@ -48,6 +99,8 @@ export function EntryForm({ today }: { today: string }) {
   const descriptionId = useId();
   const listId = useId();
   const formRef = useRef<HTMLFormElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
   const historyRequest = useRef(0);
   const historyMonthQuery = date.slice(0, 7);
@@ -55,6 +108,40 @@ export function EntryForm({ today }: { today: string }) {
   const filteredSuggestions = suggestions.filter((name) =>
     name.normalize("NFKC").toLocaleLowerCase().includes(normalizedDescription),
   );
+  const receiptPreviewUrl =
+    receiptPreview ??
+    (editingExpense?.receipt_key && !receiptRemoved
+      ? `/api/expenses/${editingExpense.id}/receipt`
+      : null);
+
+  useEffect(() => {
+    if (!receiptPreview) return;
+    return () => URL.revokeObjectURL(receiptPreview);
+  }, [receiptPreview]);
+
+  async function chooseReceipt(file: File | undefined) {
+    if (!file) return;
+    setError("");
+    setPreparingReceipt(true);
+    try {
+      const prepared = await prepareReceipt(file);
+      setReceiptFile(prepared);
+      setReceiptPreview(URL.createObjectURL(prepared));
+      setReceiptRemoved(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "This photo could not be prepared.");
+    } finally {
+      setPreparingReceipt(false);
+    }
+  }
+
+  function clearReceipt() {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptRemoved(Boolean(editingExpense?.receipt_key));
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (uploadInputRef.current) uploadInputRef.current.value = "";
+  }
 
   function chooseSuggestion(name: string) {
     setDescription(name);
@@ -130,6 +217,9 @@ export function EntryForm({ today }: { today: string }) {
     setDescription(expense.description);
     setAmount(amountText(expense.amount_piastres));
     setNotes(expense.notes);
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptRemoved(false);
     setError("");
     setNotice("");
     setHistoryError("");
@@ -145,6 +235,9 @@ export function EntryForm({ today }: { today: string }) {
     setDescription("");
     setAmount("");
     setNotes("");
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptRemoved(false);
     setError("");
     setNotice("");
     setPendingDeleteId(null);
@@ -168,6 +261,9 @@ export function EntryForm({ today }: { today: string }) {
         setDescription("");
         setAmount("");
         setNotes("");
+        setReceiptFile(null);
+        setReceiptPreview(null);
+        setReceiptRemoved(false);
       }
       setNotice("Expense removed.");
       void api<{ items: string[] }>("/api/expenses/items")
@@ -216,11 +312,21 @@ export function EntryForm({ today }: { today: string }) {
     busy.current = true;
     setSaving(true);
     try {
+      const submission = new FormData();
+      submission.set(
+        "expense",
+        JSON.stringify(
+          editTarget
+            ? { ...input, version: editTarget.version, remove_receipt: receiptRemoved }
+            : input,
+        ),
+      );
+      if (receiptFile) submission.set("receipt", receiptFile, receiptFile.name);
       const { expense: savedExpense } = await api<{ expense: Expense }>(
         editTarget ? `/api/expenses/${editTarget.id}` : "/api/expenses",
         {
           method: editTarget ? "PATCH" : "POST",
-          body: JSON.stringify(editTarget ? { ...input, version: editTarget.version } : input),
+          body: submission,
         },
       );
       historyRequest.current += 1;
@@ -248,6 +354,9 @@ export function EntryForm({ today }: { today: string }) {
       setDescription("");
       setAmount("");
       setNotes("");
+      setReceiptFile(null);
+      setReceiptPreview(null);
+      setReceiptRemoved(false);
       setEditingExpense(null);
       setNotice(editTarget ? "Expense updated." : "Expense saved.");
     } catch (cause) {
@@ -266,7 +375,7 @@ export function EntryForm({ today }: { today: string }) {
             Editing “{editingExpense.description}”. Save changes when you’re done.
           </p>
         ) : null}
-        <fieldset disabled={saving || Boolean(removingId)}>
+        <fieldset disabled={saving || Boolean(removingId) || preparingReceipt}>
           <label className="form-field" htmlFor="expense-date">
             <span>Date</span>
             <input
@@ -352,6 +461,71 @@ export function EntryForm({ today }: { today: string }) {
               onChange={(event) => setNotes(event.target.value)}
             />
           </label>
+          <div className="form-field receipt-field">
+            <span>Receipt photo (optional)</span>
+            <input
+              ref={cameraInputRef}
+              className="receipt-file-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              aria-label="Take a receipt photo"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                void chooseReceipt(file);
+              }}
+            />
+            <input
+              ref={uploadInputRef}
+              className="receipt-file-input"
+              type="file"
+              accept="image/*"
+              aria-label="Choose a receipt photo"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                void chooseReceipt(file);
+              }}
+            />
+            <div className="receipt-actions">
+              <button
+                className="receipt-action-button"
+                type="button"
+                disabled={saving || Boolean(removingId) || preparingReceipt}
+                onClick={() => cameraInputRef.current?.click()}
+              >
+                <Camera size={17} /> Take photo
+              </button>
+              <button
+                className="receipt-action-button"
+                type="button"
+                disabled={saving || Boolean(removingId) || preparingReceipt}
+                onClick={() => uploadInputRef.current?.click()}
+              >
+                <ImagePlus size={17} /> Choose photo
+              </button>
+            </div>
+            {preparingReceipt ? <small>Preparing photo…</small> : null}
+            {receiptPreviewUrl ? (
+              <div className="receipt-preview">
+                <img src={receiptPreviewUrl} alt="Selected receipt preview" />
+                <button
+                  className="receipt-remove-button"
+                  type="button"
+                  aria-label="Remove receipt photo"
+                  disabled={saving || Boolean(removingId) || preparingReceipt}
+                  onClick={clearReceipt}
+                >
+                  <X size={16} /> Remove
+                </button>
+              </div>
+            ) : (
+              <small>Photos are resized before saving.</small>
+            )}
+          </div>
         </fieldset>
         {error ? (
           <p className="form-message form-error" role="alert">
@@ -364,7 +538,11 @@ export function EntryForm({ today }: { today: string }) {
           </p>
         ) : null}
         <div className={`form-submit-row${editingExpense ? " is-editing" : ""}`}>
-          <button className="save-button" type="submit" disabled={saving || Boolean(removingId)}>
+          <button
+            className="save-button"
+            type="submit"
+            disabled={saving || Boolean(removingId) || preparingReceipt}
+          >
             {saving ? <LoaderCircle size={17} className="spin" /> : null}
             {saving ? "Saving…" : editingExpense ? "Save changes" : "Save expense"}
           </button>
@@ -372,7 +550,7 @@ export function EntryForm({ today }: { today: string }) {
             <button
               className="edit-cancel-button"
               type="button"
-              disabled={saving || Boolean(removingId)}
+              disabled={saving || Boolean(removingId) || preparingReceipt}
               onClick={cancelEditing}
             >
               Cancel
@@ -408,6 +586,19 @@ export function EntryForm({ today }: { today: string }) {
                   <small>
                     {dayLabel(expense.expense_date, true)}
                     {expense.notes ? ` · ${expense.notes}` : ""}
+                    {expense.receipt_key ? (
+                      <>
+                        {" · "}
+                        <a
+                          className="receipt-view-link"
+                          href={`/api/expenses/${expense.id}/receipt`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View receipt
+                        </a>
+                      </>
+                    ) : null}
                   </small>
                 </div>
                 <strong className="history-price">{money(expense.amount_piastres)} EGP</strong>

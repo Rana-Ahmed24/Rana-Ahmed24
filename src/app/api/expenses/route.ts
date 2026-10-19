@@ -1,7 +1,14 @@
 import { NextRequest } from "next/server";
 import { summarize, validMonth, validateExpense } from "@/lib/expenses";
 import { addExpense, listExpenses } from "@/lib/server/database";
-import { fail, invalid, json, readJson, requireSameOrigin } from "@/lib/server/http";
+import { deleteReceipt, uploadReceipt } from "@/lib/server/receipts";
+import {
+  fail,
+  invalid,
+  json,
+  readExpenseSubmission,
+  requireSameOrigin,
+} from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
@@ -15,15 +22,23 @@ export async function GET(req: NextRequest) {
 }
 export async function POST(req: NextRequest) {
   try {
-    requireSameOrigin(req);
-    const body = await readJson(req);
+    requireSameOrigin(req, ["application/json", "multipart/form-data"]);
+    const { value, receipt } = await readExpenseSubmission(req);
     let input;
     try {
-      input = validateExpense(body);
+      input = validateExpense(value);
     } catch (e) {
       invalid((e as Error).message);
     }
-    return json({ expense: await addExpense(input) }, 201);
+
+    const receiptKey = receipt ? await uploadReceipt(receipt, input.id) : null;
+    try {
+      const expense = await addExpense({ ...input, receipt_key: receiptKey });
+      return json({ expense }, 201);
+    } catch (error) {
+      if (receiptKey) await deleteReceipt(input.id, receiptKey);
+      throw error;
+    }
   } catch (error) {
     return fail(error);
   }

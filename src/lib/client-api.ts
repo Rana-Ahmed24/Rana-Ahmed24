@@ -8,10 +8,13 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers);
+  if (typeof options?.body === "string" && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json");
   const response = await fetch(url, {
     ...options,
     cache: "no-store",
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers,
   });
   const result = await response
     .json()

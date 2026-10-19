@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "expenses-receipts",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-19",
+  "workers_dev": true,
+  "r2_buckets": [
+    {
+      "binding": "RECEIPTS",
+      "bucket_name": "expenses"
+    }
+  ]
+}
